@@ -1,34 +1,54 @@
 import nodemailer from "nodemailer";
 import twilio from "twilio";
 import { prisma } from "@/lib/prisma";
+import { statusChangeEmail } from "@/lib/email-templates";
 
-const mailer = nodemailer.createTransport({
-  host: process.env.SMTP_HOST,
-  port: Number(process.env.SMTP_PORT),
-  auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
-});
-
-const twilioClient = twilio(
-  process.env.TWILIO_ACCOUNT_SID,
-  process.env.TWILIO_AUTH_TOKEN
-);
-
-export async function sendEmail(to: string, subject: string, html: string) {
-  await mailer.sendMail({ from: process.env.EMAIL_FROM, to, subject, html });
-}
-
-export async function sendSMS(to: string, body: string) {
-  await twilioClient.messages.create({
-    from: process.env.TWILIO_PHONE_NUMBER,
-    to,
-    body,
+// Lazy-initialized so env vars are definitely loaded and we get a clear error if misconfigured
+function createMailer() {
+  const port = Number(process.env.SMTP_PORT) || 587;
+  return nodemailer.createTransport({
+    host: process.env.SMTP_HOST,
+    port,
+    secure: port === 465,           // true for SSL (465), false for STARTTLS (587)
+    auth: {
+      user: process.env.SMTP_USER,
+      pass: process.env.SMTP_PASS,
+    },
+    tls: { rejectUnauthorized: false }, // allow self-signed certs in dev
   });
 }
 
-export async function notifyStatusChange(
-  issueId: string,
-  newStatus: string
-) {
+function createTwilio() {
+  return twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
+}
+
+export async function sendEmail(to: string, subject: string, html: string) {
+  const mailer = createMailer();
+  try {
+    await mailer.sendMail({ from: process.env.EMAIL_FROM, to, subject, html });
+    console.log(`[email] Sent "${subject}" → ${to}`);
+  } catch (err) {
+    console.error("[email] Failed to send:", err);
+    throw err;
+  }
+}
+
+export async function sendSMS(to: string, body: string) {
+  const client = createTwilio();
+  try {
+    await client.messages.create({
+      from: process.env.TWILIO_PHONE_NUMBER,
+      to,
+      body,
+    });
+    console.log(`[sms] Sent to ${to}`);
+  } catch (err) {
+    console.error("[sms] Failed to send:", err);
+    throw err;
+  }
+}
+
+export async function notifyStatusChange(issueId: string, newStatus: string) {
   const issue = await prisma.issue.findUnique({
     where: { id: issueId },
     include: { reportedBy: true },
@@ -36,12 +56,12 @@ export async function notifyStatusChange(
   if (!issue) return;
 
   const user = issue.reportedBy;
-  const subject = `Issue Update: "${issue.title}"`;
-  const message = `Your issue "${issue.title}" status has changed to: ${newStatus.replace(/_/g, " ")}.`;
+  const appUrl = process.env.AUTH_URL ?? process.env.NEXTAUTH_URL ?? "";
+  const plainMessage = `Your issue "${issue.title}" status has changed to: ${newStatus.replace(/_/g, " ")}.`;
 
   const jobs: Promise<void>[] = [];
 
-  // Always create an in-app notification
+  // Always create in-app notification
   jobs.push(
     prisma.notification
       .create({
@@ -49,36 +69,46 @@ export async function notifyStatusChange(
           userId: user.id,
           issueId,
           channel: "IN_APP",
-          subject,
-          body: message,
+          subject: `Issue Update: "${issue.title}"`,
+          body: plainMessage,
         },
       })
       .then(() => {})
   );
 
-  if (user.email) {
+  // Email — only if user has opted in (default true)
+  if (user.email && user.notificationEmail) {
+    const { subject, html } = statusChangeEmail({
+      userName: user.name ?? "",
+      issueTitle: issue.title,
+      issueId: issue.id,
+      newStatus,
+      appUrl,
+    });
     jobs.push(
-      sendEmail(user.email, subject, `<p>${message}</p>`)
+      sendEmail(user.email, subject, html)
         .then(() =>
           prisma.notification.create({
-            data: { userId: user.id, issueId, channel: "EMAIL", subject, body: message },
+            data: { userId: user.id, issueId, channel: "EMAIL", subject, body: plainMessage },
           })
         )
         .then(() => {})
-        .catch(() => {})
+        .catch((err) => console.error("[notify] Email job failed:", err))
     );
   }
 
-  if (user.phone) {
+  // SMS — only if user has phone + opted in
+  if (user.phone && user.notificationSms) {
+    const smsBody = `SmartCity: ${plainMessage} View: ${appUrl}/issues/${issueId}`;
     jobs.push(
-      sendSMS(user.phone, message)
+      sendSMS(user.phone, smsBody)
         .then(() =>
           prisma.notification.create({
-            data: { userId: user.id, issueId, channel: "SMS", body: message },
+            data: { userId: user.id, issueId, channel: "SMS", body: smsBody },
           })
         )
         .then(() => {})
-        .catch(() => {})
+        .catch((err) => console.error("[notify] SMS job failed:", err))
     );
   }
 

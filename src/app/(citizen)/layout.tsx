@@ -58,7 +58,7 @@ export default async function CitizenLayout({ children }: { children: React.Reac
 
           {/* User section */}
           <div className="flex items-center gap-1.5">
-            <div className="flex items-center gap-2 pl-1">
+            <Link href="/profile" className="flex items-center gap-2 pl-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 pr-2 py-0.5 transition-colors">
               {session.user.image ? (
                 <img
                   src={session.user.image}
@@ -73,7 +73,7 @@ export default async function CitizenLayout({ children }: { children: React.Reac
               <span className="text-sm font-medium text-gray-700 dark:text-gray-300 hidden sm:block max-w-[80px] truncate">
                 {session.user.name?.split(" ")[0]}
               </span>
-            </div>
+            </Link>
 
             <NotificationBell />
 
