@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
-import Image from "next/image";
 
 interface Profile {
   id: string;
@@ -75,12 +74,10 @@ export default function ProfilePage() {
       <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl p-6 mb-5">
         <div className="flex items-center gap-4 mb-5">
           {profile.image ? (
-            <Image
+            <img
               src={profile.image}
               alt=""
-              width={56}
-              height={56}
-              className="rounded-full ring-2 ring-indigo-100 dark:ring-indigo-900"
+              className="w-14 h-14 rounded-full ring-2 ring-indigo-100 dark:ring-indigo-900"
             />
           ) : (
             <div className="w-14 h-14 rounded-full bg-gradient-to-br from-indigo-400 to-violet-500 flex items-center justify-center text-white text-xl font-bold">

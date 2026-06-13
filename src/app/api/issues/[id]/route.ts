@@ -2,8 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { notifyStatusChange } from "@/lib/notifications";
-import { ref, set } from "firebase/database";
-import { db } from "@/lib/firebase";
+import { adminDb } from "@/lib/firebase-admin";
 
 export async function GET(
   _req: NextRequest,
@@ -49,8 +48,8 @@ export async function PATCH(
     },
   });
 
-  // Push real-time update to Firebase
-  await set(ref(db, `issues/${id}/status`), issue.status);
+  // Push real-time update to Firebase (best-effort — don't fail the response if it errors)
+  adminDb.ref(`issues/${id}/status`).set(issue.status).catch(() => {});
 
   // Notify citizen
   if (status) {
