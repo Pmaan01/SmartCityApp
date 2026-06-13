@@ -1,20 +1,24 @@
-import { auth } from "@/lib/auth";
 import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
 
-export default auth((req) => {
+// Lightweight edge middleware — only checks cookie presence.
+// Full session verification happens server-side in each layout.
+export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
+
+  const isSecure = req.url.startsWith("https://");
+  const cookieName = isSecure
+    ? "__Secure-authjs.session-token"
+    : "authjs.session-token";
+  const isAuthenticated = !!req.cookies.get(cookieName);
 
   const protectedPaths = ["/dashboard", "/report", "/admin"];
   const isProtected = protectedPaths.some((p) => pathname.startsWith(p));
 
-  if (isProtected && !req.auth) {
+  if (isProtected && !isAuthenticated) {
     return NextResponse.redirect(new URL("/auth/signin", req.url));
   }
-
-  if (pathname.startsWith("/admin") && req.auth?.user.role !== "ADMIN") {
-    return NextResponse.redirect(new URL("/dashboard", req.url));
-  }
-});
+}
 
 export const config = {
   matcher: ["/dashboard/:path*", "/report/:path*", "/admin/:path*"],
