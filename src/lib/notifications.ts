@@ -37,42 +37,48 @@ export async function notifyStatusChange(
 
   const user = issue.reportedBy;
   const subject = `Issue Update: "${issue.title}"`;
-  const message = `Your issue "${issue.title}" status has changed to: ${newStatus.replace("_", " ")}.`;
+  const message = `Your issue "${issue.title}" status has changed to: ${newStatus.replace(/_/g, " ")}.`;
 
   const jobs: Promise<void>[] = [];
 
+  // Always create an in-app notification
+  jobs.push(
+    prisma.notification
+      .create({
+        data: {
+          userId: user.id,
+          issueId,
+          channel: "IN_APP",
+          subject,
+          body: message,
+        },
+      })
+      .then(() => {})
+  );
+
   if (user.email) {
     jobs.push(
-      sendEmail(user.email, subject, `<p>${message}</p>`).then(() =>
-        prisma.notification
-          .create({
-            data: {
-              userId: user.id,
-              issueId,
-              channel: "EMAIL",
-              subject,
-              body: message,
-            },
+      sendEmail(user.email, subject, `<p>${message}</p>`)
+        .then(() =>
+          prisma.notification.create({
+            data: { userId: user.id, issueId, channel: "EMAIL", subject, body: message },
           })
-          .then(() => {})
-      )
+        )
+        .then(() => {})
+        .catch(() => {})
     );
   }
 
   if (user.phone) {
     jobs.push(
-      sendSMS(user.phone, message).then(() =>
-        prisma.notification
-          .create({
-            data: {
-              userId: user.id,
-              issueId,
-              channel: "SMS",
-              body: message,
-            },
+      sendSMS(user.phone, message)
+        .then(() =>
+          prisma.notification.create({
+            data: { userId: user.id, issueId, channel: "SMS", body: message },
           })
-          .then(() => {})
-      )
+        )
+        .then(() => {})
+        .catch(() => {})
     );
   }
 
