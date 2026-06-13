@@ -35,12 +35,13 @@ export async function POST(req: NextRequest) {
   // Use Gemini to auto-categorize
   let category: IssueCategory = "OTHER";
   let priority = 1;
+  let aiSummary: string | undefined;
   try {
     const ai = await categorizeIssue(description);
     category = ai.category as IssueCategory;
     priority = ai.priority;
+    aiSummary = ai.summary;
   } catch {
-    // fallback to manual category if provided
     if (body.category) category = body.category;
   }
 
@@ -50,6 +51,7 @@ export async function POST(req: NextRequest) {
       description,
       category,
       priority,
+      aiSummary,
       lat,
       lng,
       address,

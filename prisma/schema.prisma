@@ -105,6 +105,7 @@ model Issue {
   lng          Float
   address      String?
   photoUrl     String?
+  aiSummary    String?
   reportedById String
   assignedToId String?
   createdAt    DateTime      @default(now())
