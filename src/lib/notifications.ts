@@ -1,6 +1,7 @@
 import nodemailer from "nodemailer";
 import twilio from "twilio";
 import { prisma } from "@/lib/prisma";
+import { statusChangeEmail } from "@/lib/email-templates";
 
 const mailer = nodemailer.createTransport({
   host: process.env.SMTP_HOST,
@@ -25,10 +26,7 @@ export async function sendSMS(to: string, body: string) {
   });
 }
 
-export async function notifyStatusChange(
-  issueId: string,
-  newStatus: string
-) {
+export async function notifyStatusChange(issueId: string, newStatus: string) {
   const issue = await prisma.issue.findUnique({
     where: { id: issueId },
     include: { reportedBy: true },
@@ -36,12 +34,12 @@ export async function notifyStatusChange(
   if (!issue) return;
 
   const user = issue.reportedBy;
-  const subject = `Issue Update: "${issue.title}"`;
-  const message = `Your issue "${issue.title}" status has changed to: ${newStatus.replace(/_/g, " ")}.`;
+  const appUrl = process.env.AUTH_URL ?? process.env.NEXTAUTH_URL ?? "";
+  const plainMessage = `Your issue "${issue.title}" status has changed to: ${newStatus.replace(/_/g, " ")}.`;
 
   const jobs: Promise<void>[] = [];
 
-  // Always create an in-app notification
+  // Always create in-app notification
   jobs.push(
     prisma.notification
       .create({
@@ -49,19 +47,27 @@ export async function notifyStatusChange(
           userId: user.id,
           issueId,
           channel: "IN_APP",
-          subject,
-          body: message,
+          subject: `Issue Update: "${issue.title}"`,
+          body: plainMessage,
         },
       })
       .then(() => {})
   );
 
-  if (user.email) {
+  // Email — only if user has opted in (default true)
+  if (user.email && user.notificationEmail) {
+    const { subject, html } = statusChangeEmail({
+      userName: user.name ?? "",
+      issueTitle: issue.title,
+      issueId: issue.id,
+      newStatus,
+      appUrl,
+    });
     jobs.push(
-      sendEmail(user.email, subject, `<p>${message}</p>`)
+      sendEmail(user.email, subject, html)
         .then(() =>
           prisma.notification.create({
-            data: { userId: user.id, issueId, channel: "EMAIL", subject, body: message },
+            data: { userId: user.id, issueId, channel: "EMAIL", subject, body: plainMessage },
           })
         )
         .then(() => {})
@@ -69,12 +75,14 @@ export async function notifyStatusChange(
     );
   }
 
-  if (user.phone) {
+  // SMS — only if user has phone + opted in
+  if (user.phone && user.notificationSms) {
+    const smsBody = `SmartCity: ${plainMessage} View: ${appUrl}/issues/${issueId}`;
     jobs.push(
-      sendSMS(user.phone, message)
+      sendSMS(user.phone, smsBody)
         .then(() =>
           prisma.notification.create({
-            data: { userId: user.id, issueId, channel: "SMS", body: message },
+            data: { userId: user.id, issueId, channel: "SMS", body: smsBody },
           })
         )
         .then(() => {})

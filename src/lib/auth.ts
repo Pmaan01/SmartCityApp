@@ -3,6 +3,8 @@ import { PrismaAdapter } from "@auth/prisma-adapter";
 import Google from "next-auth/providers/google";
 import { prisma } from "@/lib/prisma";
 import type { Role } from "@prisma/client";
+import { sendEmail } from "@/lib/notifications";
+import { welcomeEmail } from "@/lib/email-templates";
 type DBUser = { role?: Role; phone?: string | null };
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
@@ -29,6 +31,14 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   },
   pages: {
     signIn: "/auth/signin",
+  },
+  events: {
+    createUser: async ({ user }) => {
+      if (!user.email) return;
+      const appUrl = process.env.AUTH_URL ?? process.env.NEXTAUTH_URL ?? "";
+      const { subject, html } = welcomeEmail({ userName: user.name ?? "", appUrl });
+      sendEmail(user.email, subject, html).catch(() => {});
+    },
   },
 });
 

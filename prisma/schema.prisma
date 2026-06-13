@@ -46,8 +46,10 @@ model User {
   email         String    @unique
   emailVerified DateTime?
   image         String?
-  phone         String?
-  role          Role      @default(CITIZEN)
+  phone             String?
+  role              Role      @default(CITIZEN)
+  notificationEmail Boolean   @default(true)
+  notificationSms   Boolean   @default(false)
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
