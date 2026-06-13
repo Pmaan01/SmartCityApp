@@ -2,6 +2,7 @@ import Link from "next/link";
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { signOut } from "@/lib/auth";
+import NotificationBell from "@/components/notifications/NotificationBell";
 
 export default async function CitizenLayout({ children }: { children: React.ReactNode }) {
   const session = await auth();
@@ -56,7 +57,7 @@ export default async function CitizenLayout({ children }: { children: React.Reac
           </div>
 
           {/* User section */}
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-1.5">
             <div className="flex items-center gap-2 pl-1">
               {session.user.image ? (
                 <img
@@ -73,6 +74,8 @@ export default async function CitizenLayout({ children }: { children: React.Reac
                 {session.user.name?.split(" ")[0]}
               </span>
             </div>
+
+            <NotificationBell />
 
             <form action={async () => { "use server"; await signOut({ redirectTo: "/" }); }}>
               <button className="flex items-center gap-1 text-xs px-3 py-1.5 rounded-full border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:border-red-200 dark:hover:border-red-900/60 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 transition-all duration-150 font-medium">

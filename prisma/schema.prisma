@@ -37,6 +37,7 @@ enum IssueCategory {
 enum NotificationChannel {
   EMAIL
   SMS
+  IN_APP
 }
 
 model User {
@@ -140,6 +141,7 @@ model Notification {
   channel NotificationChannel
   subject String?
   body    String
+  read    Boolean             @default(false)
   sentAt  DateTime            @default(now())
   success Boolean             @default(true)
 
