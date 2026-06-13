@@ -54,13 +54,17 @@ export default async function DashboardPage({
       ) : (
         <div className="space-y-3">
           {issues.map((issue) => (
-            <div key={issue.id} className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl p-4 flex items-start gap-4">
+            <Link
+              key={issue.id}
+              href={`/issues/${issue.id}`}
+              className="block bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl p-4 flex items-start gap-4 hover:border-indigo-300 dark:hover:border-indigo-700 hover:shadow-sm transition-all group"
+            >
               {issue.photoUrl && (
                 <img src={issue.photoUrl} alt="" className="w-16 h-16 rounded-lg object-cover flex-shrink-0" />
               )}
               <div className="flex-1 min-w-0">
                 <div className="flex items-start justify-between gap-2">
-                  <p className="font-semibold text-gray-900 dark:text-white text-sm truncate">{issue.title}</p>
+                  <p className="font-semibold text-gray-900 dark:text-white text-sm truncate group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">{issue.title}</p>
                   <span className={`text-xs px-2 py-0.5 rounded-full font-medium whitespace-nowrap ${STATUS_COLORS[issue.status]}`}>
                     {issue.status.replace("_", " ")}
                   </span>
@@ -73,7 +77,10 @@ export default async function DashboardPage({
                   {issue.address && <><span>·</span><span className="truncate">📍 {issue.address}</span></>}
                 </div>
               </div>
-            </div>
+              <svg className="w-4 h-4 text-gray-300 dark:text-gray-600 group-hover:text-indigo-400 flex-shrink-0 mt-0.5 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </Link>
           ))}
         </div>
       )}

@@ -3,6 +3,7 @@ import { PrismaAdapter } from "@auth/prisma-adapter";
 import Google from "next-auth/providers/google";
 import { prisma } from "@/lib/prisma";
 import type { Role } from "@prisma/client";
+type DBUser = { role?: Role; phone?: string | null };
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   adapter: PrismaAdapter(prisma),
@@ -20,9 +21,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     async session({ session, user }) {
       if (session.user) {
         session.user.id = user.id;
-        const dbUser = await prisma.user.findUnique({ where: { id: user.id } });
-        session.user.role = dbUser?.role ?? "CITIZEN";
-        session.user.phone = dbUser?.phone ?? null;
+        session.user.role = (user as DBUser).role ?? "CITIZEN";
+        session.user.phone = (user as DBUser).phone ?? null;
       }
       return session;
     },
