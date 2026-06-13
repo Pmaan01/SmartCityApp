@@ -3,27 +3,49 @@ import twilio from "twilio";
 import { prisma } from "@/lib/prisma";
 import { statusChangeEmail } from "@/lib/email-templates";
 
-const mailer = nodemailer.createTransport({
-  host: process.env.SMTP_HOST,
-  port: Number(process.env.SMTP_PORT),
-  auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
-});
+// Lazy-initialized so env vars are definitely loaded and we get a clear error if misconfigured
+function createMailer() {
+  const port = Number(process.env.SMTP_PORT) || 587;
+  return nodemailer.createTransport({
+    host: process.env.SMTP_HOST,
+    port,
+    secure: port === 465,           // true for SSL (465), false for STARTTLS (587)
+    auth: {
+      user: process.env.SMTP_USER,
+      pass: process.env.SMTP_PASS,
+    },
+    tls: { rejectUnauthorized: false }, // allow self-signed certs in dev
+  });
+}
 
-const twilioClient = twilio(
-  process.env.TWILIO_ACCOUNT_SID,
-  process.env.TWILIO_AUTH_TOKEN
-);
+function createTwilio() {
+  return twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
+}
 
 export async function sendEmail(to: string, subject: string, html: string) {
-  await mailer.sendMail({ from: process.env.EMAIL_FROM, to, subject, html });
+  const mailer = createMailer();
+  try {
+    await mailer.sendMail({ from: process.env.EMAIL_FROM, to, subject, html });
+    console.log(`[email] Sent "${subject}" → ${to}`);
+  } catch (err) {
+    console.error("[email] Failed to send:", err);
+    throw err;
+  }
 }
 
 export async function sendSMS(to: string, body: string) {
-  await twilioClient.messages.create({
-    from: process.env.TWILIO_PHONE_NUMBER,
-    to,
-    body,
-  });
+  const client = createTwilio();
+  try {
+    await client.messages.create({
+      from: process.env.TWILIO_PHONE_NUMBER,
+      to,
+      body,
+    });
+    console.log(`[sms] Sent to ${to}`);
+  } catch (err) {
+    console.error("[sms] Failed to send:", err);
+    throw err;
+  }
 }
 
 export async function notifyStatusChange(issueId: string, newStatus: string) {
@@ -71,7 +93,7 @@ export async function notifyStatusChange(issueId: string, newStatus: string) {
           })
         )
         .then(() => {})
-        .catch(() => {})
+        .catch((err) => console.error("[notify] Email job failed:", err))
     );
   }
 
@@ -86,7 +108,7 @@ export async function notifyStatusChange(issueId: string, newStatus: string) {
           })
         )
         .then(() => {})
-        .catch(() => {})
+        .catch((err) => console.error("[notify] SMS job failed:", err))
     );
   }
 

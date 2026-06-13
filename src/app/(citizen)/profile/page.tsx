@@ -262,32 +262,43 @@ function Toggle({
   disabled?: boolean;
 }) {
   return (
-    <div className={`flex items-center justify-between gap-4 py-1 ${disabled ? "opacity-50" : ""}`}>
+    <div
+      role="switch"
+      aria-checked={enabled}
+      aria-disabled={disabled}
+      onClick={() => !disabled && onChange(!enabled)}
+      className={`flex items-center justify-between gap-4 py-2 rounded-xl px-1 -mx-1 transition-colors ${
+        disabled
+          ? "opacity-50 cursor-not-allowed"
+          : "cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/60"
+      }`}
+    >
       <div className="flex items-center gap-3">
-        <div className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-500 dark:text-gray-400 flex-shrink-0">
+        <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors ${
+          enabled
+            ? "bg-indigo-100 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400"
+            : "bg-gray-100 dark:bg-gray-800 text-gray-400"
+        }`}>
           {icon}
         </div>
         <div>
-          <p className="text-sm font-medium text-gray-800 dark:text-gray-200">{label}</p>
-          <p className="text-xs text-gray-400 mt-0.5">{description}</p>
+          <p className="text-sm font-medium text-gray-800 dark:text-gray-200 select-none">{label}</p>
+          <p className="text-xs text-gray-400 mt-0.5 select-none">{description}</p>
         </div>
       </div>
-      <button
-        type="button"
-        role="switch"
-        aria-checked={enabled}
-        disabled={disabled}
-        onClick={() => !disabled && onChange(!enabled)}
-        className={`relative flex-shrink-0 w-11 h-6 rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 ${
+
+      {/* Toggle pill — purely visual, interaction handled by parent div */}
+      <div
+        className={`relative flex-shrink-0 w-11 h-6 rounded-full transition-colors duration-200 ${
           enabled ? "bg-indigo-600" : "bg-gray-200 dark:bg-gray-700"
-        } ${disabled ? "cursor-not-allowed" : "cursor-pointer"}`}
+        }`}
       >
         <span
           className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow-sm transition-transform duration-200 ${
             enabled ? "translate-x-6" : "translate-x-1"
           }`}
         />
-      </button>
+      </div>
     </div>
   );
 }
