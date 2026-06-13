@@ -7,7 +7,6 @@ import type { Role } from "@prisma/client";
 export const { handlers, signIn, signOut, auth } = NextAuth({
   adapter: PrismaAdapter(prisma),
   trustHost: true,
-  useSecureCookies: false,
   logger: {
     error: (e) => console.error("[auth]", e),
   },
