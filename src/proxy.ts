@@ -1,8 +1,6 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-// Lightweight edge middleware — only checks cookie presence.
-// Full session verification happens server-side in each layout.
 export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
